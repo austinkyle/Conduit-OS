@@ -1,0 +1,20 @@
+import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
+import TokenPicker from '../components/TokenPicker';
+import './globals.css';
+
+export const metadata: Metadata = { title: 'Conduit Core — Ingestion Ledger' };
+
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  return <html lang="en"><body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.07),transparent_28%)]">
+      <header className="sticky top-0 z-40 border-b border-slate-800/90 bg-slate-950/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3"><div className="grid h-9 w-9 place-items-center rounded-lg border border-sky-400/20 bg-sky-400/10 text-sky-300"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M5 7.5h9.5a3.5 3.5 0 010 7H9m-2.5-10L3.5 7.5l3 3m11-7l3 3-3 3" /></svg></div><div><p className="text-sm font-bold tracking-wide text-white sm:text-base">Conduit Core</p><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Ingestion Ledger</p></div></div>
+          <TokenPicker />
+        </div>
+      </header>
+      {children}
+    </div>
+  </body></html>;
+}

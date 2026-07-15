@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html { background: #020617; }
+body { margin: 0; }
+::selection { background: rgba(14, 165, 233, 0.3); color: #f8fafc; }
+* { scrollbar-color: #334155 #0f172a; scrollbar-width: thin; }
+
