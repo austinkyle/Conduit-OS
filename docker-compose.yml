@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     environment:
       POSTGRES_USER: conduit
       POSTGRES_PASSWORD: conduit
@@ -14,7 +14,10 @@ services:
       retries: 5
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./conduit-core/db/migrations:/docker-entrypoint-initdb.d:ro
+      - ./conduit-core/db/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+      - ./conduit-core/db/migrations/002_seed.sql:/docker-entrypoint-initdb.d/002_seed.sql:ro
+      - ./conduit-reply/db/migrations/003_reply_init.sql:/docker-entrypoint-initdb.d/003_reply_init.sql:ro
+      - ./conduit-reply/db/migrations/004_reply_seed.sql:/docker-entrypoint-initdb.d/004_reply_seed.sql:ro
 
   redis:
     image: redis:7-alpine
@@ -72,6 +75,62 @@ services:
       API_URL: http://api:4000
     depends_on:
       - api
+
+  reply-api:
+    build:
+      context: ./conduit-reply/api
+    command: node dist/server.js
+    ports:
+      - "4001:4001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://conduit:conduit@postgres:5432/conduit
+      REDIS_URL: redis://redis:6379
+      PORT: "4001"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      SHOPIFY_ADMIN_ACCESS_TOKEN: ${SHOPIFY_ADMIN_ACCESS_TOKEN:-}
+      SHOPIFY_STORE_DOMAIN: ${SHOPIFY_STORE_DOMAIN:-}
+
+  reply-worker:
+    build:
+      context: ./conduit-reply/api
+    command: node dist/worker.js
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://conduit:conduit@postgres:5432/conduit
+      REDIS_URL: redis://redis:6379
+      PORT: "4001"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      SHOPIFY_ADMIN_ACCESS_TOKEN: ${SHOPIFY_ADMIN_ACCESS_TOKEN:-}
+      SHOPIFY_STORE_DOMAIN: ${SHOPIFY_STORE_DOMAIN:-}
+
+  reply-web:
+    build:
+      context: ./conduit-reply/web
+    ports:
+      - "3001:3001"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4001
+      API_URL: http://reply-api:4001
+      PORT: "3001"
+    depends_on:
+      - reply-api
 
 volumes:
   pgdata:

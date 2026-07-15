@@ -36,7 +36,11 @@ flowchart LR
         Ledger --> Console[Next.js ledger console]
     end
     Worker --> Stream[pg_notify conduit_events<br/>downstream event stream]
-    Stream -. roadmap .-> Reply[conduit-reply<br/>support automation]
+    subgraph Reply[conduit-reply — shipped]
+        Stream --> Intake[Ticket classification]
+        Intake --> Drafts[RAG drafts]
+        Drafts --> Actions[Authorized actions]
+    end
     Stream -. roadmap .-> Ops[conduit-ops<br/>inventory intelligence]
     Stream -. roadmap .-> CFO[conduit-cfo<br/>margin intelligence]
     Console -->|search, filter, replay| HMAC
@@ -95,7 +99,7 @@ npm test
 | Module | Status | Business problem |
 |---|---|---|
 | [`conduit-core`](conduit-core/README.md) | **Shipped and verified** | Prevents lost, duplicated, or unauditable events from becoming ghost orders and reconciliation work. |
-| `conduit-reply` | Roadmap | Automates ~70% of support tickets so service volume can grow without support payroll growing at the same rate. |
+| [`conduit-reply`](conduit-reply/README.md) | **Shipped and verified** | Automates ticket triage, grounded drafts, and authorized commerce actions so service volume can grow without support payroll growing at the same rate. |
 | `conduit-ops` | Roadmap | Releases cash frozen in slow inventory while bestsellers stock out. |
 | `conduit-cfo` | Roadmap | Replaces ad-scaling decisions made on stale spreadsheet data with current transaction and margin signals. |
 
@@ -109,5 +113,6 @@ npm test
 - `pg_notify('conduit_events', ...)` publication for downstream modules.
 - Next.js 14 console with live counts, search, filters, JSON inspection, role selection, and replay.
 - Reproducible simulator and 11 passing unit tests.
+- `conduit-reply` CRM with asynchronous classification, grounded drafts, role-gated Shopify actions, churn SMS, Agent Copilot, and zero-key fallbacks.
 
 See the [`conduit-core` deep dive](conduit-core/README.md) for API, security, Shopify setup, deployment, and scaling details.

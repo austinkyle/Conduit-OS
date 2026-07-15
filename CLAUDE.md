@@ -43,7 +43,7 @@ Data flow: `conduit-core` is the source of truth. All other modules consume its 
 ## Status
 
 - [x] conduit-core — shipped (ingest API, worker, fraud agent, ledger console, tests, simulator — verified 2026-07-15)
-- [ ] conduit-reply — not started
+- [x] conduit-reply — shipped (ticket ingest, BullMQ classification, RAG draft generation, autonomous Shopify actions, churn-prevention SMS loop, Agent Copilot console, tests, eval, simulator — verified 2026-07-15)
 - [ ] conduit-ops — not started
 - [ ] conduit-cfo — not started
 
