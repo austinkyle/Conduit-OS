@@ -5,6 +5,7 @@ import { withTenant } from '../db.js';
 import { extractOrderIds } from '../extractor.js';
 import { generateDraftReply } from '../llm.js';
 import { buildDraftTemplate, lookupOrderContext, retrieveKnowledgeBase } from '../rag.js';
+import { recordUsage } from '../usage.js';
 
 interface MessageRow {
   sender_type: 'Customer' | 'Human_Agent' | 'AI_Agent';
@@ -49,15 +50,21 @@ export async function draftRoutes(server: FastifyInstance): Promise<void> {
 
       let draft = templateDraft;
       let source: 'llm' | 'template' = 'template';
+      let usage: { inputTokens?: number; outputTokens?: number } | undefined;
       if (process.env.ANTHROPIC_API_KEY) {
         const generated = await generateDraftReply(
           `Write a concise customer-support reply using this template and preserve its factual details.\nCategory: ${classification.category}\nSentiment: ${classification.sentiment}\n\nTemplate:\n${templateDraft}`,
         );
         if (generated) {
-          draft = generated;
+          draft = generated.text;
+          usage = generated.usage;
           source = 'llm';
         }
       }
+
+      await recordUsage(tenantId, 'draft_reply', source === 'llm'
+        ? { tokensIn: usage?.inputTokens, tokensOut: usage?.outputTokens, metadata: { source } }
+        : { costUsd: 0, metadata: { source } });
 
       const latencyMs = Date.now() - startedAt;
       await withTenant(tenantId, async (client) => {

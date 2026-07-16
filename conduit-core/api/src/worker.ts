@@ -5,6 +5,7 @@ import type { WebhookJobData } from './queue.js';
 import { scoreOrder, type FraudSignal, type ShopifyOrderLike } from './fraud/scorer.js';
 import { escalateWithLLM } from './fraud/llm.js';
 import { publishProcessedEvent, sendSlackAlert } from './notify.js';
+import { recordUsage } from './usage.js';
 
 interface OrderPayload extends ShopifyOrderLike {
   id?: string | number | null;
@@ -90,6 +91,9 @@ const worker = new Worker<WebhookJobData>(
               detail: `${llm.verdict}: ${llm.rationale}`,
             });
           }
+          await recordUsage(tenantId, 'fraud_screen', llm
+            ? { metadata: { source: 'llm', verdict: llm.verdict } }
+            : { costUsd: 0, metadata: { source: 'heuristic' } });
         }
 
         const orderResult = await client.query<{ id: string }>(

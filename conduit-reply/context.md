@@ -6,6 +6,7 @@ conduit-reply reduces support payroll growth by turning conduit-core's trusted o
 
 - **Shipped and verified 2026-07-15:** Fastify CRM API, BullMQ classification and churn workers, PostgreSQL/pgvector RLS schema, deterministic classification/templates, optional Claude/OpenAI/Twilio/Shopify adapters, and Next.js Agent Copilot Workspace.
 - Verified with zero external API keys: 10/10 Vitest tests; 4/4 live-stack eval scenarios; 50/50 concurrent simulated tickets with 0 failures; ingest p50 41.3 ms / p95 119.3 ms / p99 136.7 ms against a 2000 ms p95 threshold; stats `{"totalTickets":66,"autoResolutionRate":1,"handoffRatio":0,"avgLatencyMs":9,"totalLlmCostUsd":0}`.
+- **Cross-module integration:** `worker.ts` debounces core's `orders/*` events into a churn scan (one job per tenant per 5-minute bucket via a deterministic `jobId`), and `api/src/usage.ts` records every classification/draft-generation task to the shared `usage_ledger` that `conduit-cfo` bills against.
 
 ## Stack
 
@@ -20,6 +21,7 @@ TypeScript, Fastify 4, PostgreSQL 15 + pgvector, Redis 7, BullMQ 5, Next.js 14, 
 - `api/src/pii.ts` — Luhn-gated card, SSN, CVV, and password redaction.
 - `api/src/llm.ts` — optional Claude classification and draft overlay.
 - `api/src/embeddings.ts` — optional OpenAI embeddings and SHA256 fallback.
+- `api/src/usage.ts` — shared `usage_ledger` write helper (`recordUsage`, `resolveCost`); never throws.
 - `api/src/queue.ts` — BullMQ ticket and churn queues.
 - `api/src/classifier.ts` — heuristic-first classification with optional LLM.
 - `api/src/extractor.ts` — order ID and SKU extraction.

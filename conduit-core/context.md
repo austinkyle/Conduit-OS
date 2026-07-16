@@ -6,6 +6,7 @@ conduit-core prevents lost and duplicate commerce actions by providing the shipp
 
 - **Shipped and verified 2026-07-15:** Fastify ingest, BullMQ worker, PostgreSQL/RLS ledger and orders, fraud agent, Next.js console, 11 tests, signed simulator.
 - Verified: p50 ~27 ms / steady-state p95 ~36–41 ms; 5/5 duplicates recognized; 0 duplicate rows; 250 processed events across 10 runs → 25 orders; 1 fraud flag; 0 failures; Viewer replay `403`; Admin `200`; invalid HMAC `401`.
+- **Cross-module integration:** `worker.ts` records every Claude fraud-escalation call (or its deterministic-fallback equivalent) to the shared `usage_ledger` via `api/src/usage.ts`, the same table every other module writes to and only `conduit-cfo` bills against.
 
 ## Stack
 
@@ -18,6 +19,7 @@ TypeScript, Fastify 4, PostgreSQL 15, Redis 7, BullMQ 5, Next.js 14, React, Tail
 - `api/src/db.ts` — PostgreSQL pool and transaction-local tenant context.
 - `api/src/hmac.ts` — constant-time Shopify HMAC verification.
 - `api/src/notify.ts` — Postgres event publication and Slack alerts.
+- `api/src/usage.ts` — shared `usage_ledger` write helper (`recordUsage`, `resolveCost`); never throws.
 - `api/src/queue.ts` — BullMQ queue, attempts, and backoff.
 - `api/src/server.ts` — Fastify composition, health route, listener, pool warm-up.
 - `api/src/worker.ts` — idempotent processing, order upsert, fraud, event publication.

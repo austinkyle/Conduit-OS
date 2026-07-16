@@ -4,6 +4,8 @@ Conduit-OS gives high-growth DTC brands a reliable event-driven AI operating sys
 
 Built for $5M–$50M brands, it starts with `conduit-core`: a Shopify ingestion ledger that acknowledges webhooks quickly, eliminates duplicate-delivery effects, preserves replayable history, and publishes a stable event stream for future support, inventory, and finance automation.
 
+> **New here?** Read **[Conduit OS: The Simple Layman's Explanation](CONDUIT-OS-EXPLAINED.md)** ([PDF](CONDUIT-OS-EXPLAINED.pdf)) for a plain-English walkthrough of what all four modules do and how they work together, with a real-world example.
+
 ## In plain English
 
 **The problem:** Every time someone buys something on a Shopify store, Shopify sends a small notification called a "webhook" — think of it as a text message saying "order #4471 just happened." A store's backend systems (inventory, shipping, support, accounting) all rely on receiving that message correctly, exactly once.
@@ -41,8 +43,17 @@ flowchart LR
         Intake --> Drafts[RAG drafts]
         Drafts --> Actions[Authorized actions]
     end
-    Stream -. roadmap .-> Ops[conduit-ops<br/>inventory intelligence]
-    Stream -. roadmap .-> CFO[conduit-cfo<br/>margin intelligence]
+    subgraph Ops[conduit-ops — shipped]
+        Stream --> Velocity[Sales velocity + forecast]
+        Velocity --> POs[Auto-drafted purchase orders]
+        POs --> Supplier[Supplier email agent]
+    end
+    subgraph CFO[conduit-cfo — shipped]
+        Stream --> Rollup[Daily financial rollup]
+        Orders -.read-only.-> Rollup
+        Rollup --> Cohorts[LTV cohorts]
+        Rollup --> Copilot[NL copilot<br/>readonly-role enforced]
+    end
     Console -->|search, filter, replay| HMAC
 ```
 
@@ -100,8 +111,17 @@ npm test
 |---|---|---|
 | [`conduit-core`](conduit-core/README.md) | **Shipped and verified** | Prevents lost, duplicated, or unauditable events from becoming ghost orders and reconciliation work. |
 | [`conduit-reply`](conduit-reply/README.md) | **Shipped and verified** | Automates ticket triage, grounded drafts, and authorized commerce actions so service volume can grow without support payroll growing at the same rate. |
-| `conduit-ops` | Roadmap | Releases cash frozen in slow inventory while bestsellers stock out. |
-| `conduit-cfo` | Roadmap | Replaces ad-scaling decisions made on stale spreadsheet data with current transaction and margin signals. |
+| [`conduit-ops`](conduit-ops/README.md) | **Shipped and verified** | Releases cash frozen in slow inventory while bestsellers stock out. |
+| [`conduit-cfo`](conduit-cfo/README.md) | **Shipped and verified** | Replaces ad-scaling decisions made on stale spreadsheet data with a daily reconciled net-profit number, real LTV cohorts, and a database-enforced read-only NL copilot. |
+
+## Cross-module integration
+
+The four modules aren't four separate apps sharing a database by coincidence — `conduit-core`'s event stream actively drives the other three, and every module's AI-task spend rolls up into one bill.
+
+- **Event-driven reactions, not just shared tables.** Each downstream module (`reply`, `ops`, `cfo`) keeps a `LISTEN conduit_events` connection open on core's `pg_notify` channel. An `orders/*` webhook enqueues a debounced BullMQ job in the relevant queue — a financial rollup, a demand-forecast scan, a churn scan — 30–60 seconds later. A burst of orders during a flash sale collapses into one job per tenant per 5-minute window (a deterministic `jobId` makes a repeat enqueue within that window a no-op), so a BFCM-scale spike doesn't fan out into a rollup storm.
+- **One usage ledger, one bill.** Every module records each AI-task execution (fraud escalation, ticket classification, draft generation, invoice OCR, copilot query) to a shared `usage_ledger` table — real token counts and Haiku pricing where available, a flat per-task estimate otherwise. `conduit-cfo` reads it back in an **AI task usage & billing** panel and reports it to Stripe's metered-billing API on an hourly cycle (`[simulated]`-logged when no `STRIPE_API_KEY` is set, so the loop is fully exercisable with zero external accounts).
+- **Cross-module financial copilot.** The NL copilot's schema now spans a PII-safe `orders_financial` view onto core's orders (no customer id, no raw payload) and `ops`'s `products` table, alongside cfo's own tables — enforced the same way as everything else in cfo: by what the `conduit_cfo_readonly` Postgres role is actually granted, not by an app-layer allowlist.
+- **Upgrading an existing volume.** `docker-entrypoint-initdb.d` only runs against a fresh Postgres volume. If you already have one running, apply the integration migration directly: `./scripts/apply-migration.sh`.
 
 ## What ships today
 
@@ -114,5 +134,11 @@ npm test
 - Next.js 14 console with live counts, search, filters, JSON inspection, role selection, and replay.
 - Reproducible simulator and 11 passing unit tests.
 - `conduit-reply` CRM with asynchronous classification, grounded drafts, role-gated Shopify actions, churn SMS, Agent Copilot, and zero-key fallbacks.
+- `conduit-ops` ERP with deterministic depletion forecasting, auto-drafted purchase orders, a supplier email agent, a returns router, and invoice OCR with a deterministic fallback.
+- `conduit-cfo` Executive Financial Cockpit with a daily financial rollup engine, LTV cohort computation, and an NL copilot enforced read-only at the database level, not just the app layer.
 
-See the [`conduit-core` deep dive](conduit-core/README.md) for API, security, Shopify setup, deployment, and scaling details.
+See the [`conduit-core` deep dive](conduit-core/README.md) for API, security, Shopify setup, deployment, and scaling details, the [`conduit-ops` deep dive](conduit-ops/README.md) for forecasting, PO drafting, and invoice OCR details, or the [`conduit-cfo` deep dive](conduit-cfo/README.md) for the rollup engine, cohorts, and copilot security boundary.
+
+## A note on the four consoles' proxy configuration
+
+Each module's Next.js console proxies `/api/*` to its Fastify API via `next.config.js`'s `rewrites()`. That destination is resolved and baked into the built `.next/routes-manifest.json` at **image build time** — it is not read from an environment variable at container start. Each `<module>/web/Dockerfile` accepts `API_URL` as a build `ARG`, and the corresponding `build.args` in `docker-compose.yml` supplies the in-network API address (e.g. `http://cfo-api:4003` for `cfo-web`). If you ever change an API's internal address or port, rebuild the affected web image (`docker compose build <web-service>`) and recreate its container — restarting the container alone will not pick up a new destination.

@@ -1,16 +1,23 @@
 import { scrubPii } from './pii.js';
 
+export interface AnthropicUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+}
+
 export interface ClassifyResult {
   category: string;
   sentiment: string;
   summary: string;
+  usage: AnthropicUsage;
 }
 
 interface AnthropicResponse {
   content?: Array<{ type?: string; text?: string }>;
+  usage?: { input_tokens?: number; output_tokens?: number };
 }
 
-async function requestAnthropic(prompt: string, maxTokens: number): Promise<string> {
+async function requestAnthropic(prompt: string, maxTokens: number): Promise<{ text: string; usage: AnthropicUsage }> {
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -29,7 +36,7 @@ async function requestAnthropic(prompt: string, maxTokens: number): Promise<stri
   const body = await response.json() as AnthropicResponse;
   const text = body.content?.find((item) => item.type === 'text')?.text?.trim();
   if (!text) throw new Error('Anthropic API returned no text');
-  return text;
+  return { text, usage: { inputTokens: body.usage?.input_tokens, outputTokens: body.usage?.output_tokens } };
 }
 
 export async function classifyTicket(messageBody: string): Promise<ClassifyResult | null> {
@@ -37,7 +44,7 @@ export async function classifyTicket(messageBody: string): Promise<ClassifyResul
 
   try {
     const message = scrubPii(messageBody);
-    const text = await requestAnthropic(
+    const { text, usage } = await requestAnthropic(
       `Classify this customer support message. Reply with exactly three non-empty lines in this format:\nCategory: <Shipping|Returns|Cancellation|General>\nSentiment: <Positive|Neutral|Negative>\nSummary: <one-sentence summary>\n\nMessage:\n${message}`,
       300,
     );
@@ -49,14 +56,14 @@ export async function classifyTicket(messageBody: string): Promise<ClassifyResul
     const summary = lines[2]?.match(/^Summary:\s*(.+)$/i)?.[1]?.trim();
     if (!category || !sentiment || !summary) throw new Error('Malformed classification fields');
 
-    return { category, sentiment, summary };
+    return { category, sentiment, summary, usage };
   } catch (error) {
     console.warn('LLM ticket classification failed', error);
     return null;
   }
 }
 
-export async function generateDraftReply(prompt: string): Promise<string | null> {
+export async function generateDraftReply(prompt: string): Promise<{ text: string; usage: AnthropicUsage } | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
 
   try {

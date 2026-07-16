@@ -6,6 +6,7 @@ import { pool, withTenant } from './db.js';
 import { startCoreEventListener } from './events.js';
 import { runChurnScan } from './churn.js';
 import { churnQueue } from './queue.js';
+import { recordUsage } from './usage.js';
 
 interface TicketJobData {
   ticketId: string;
@@ -55,6 +56,10 @@ const worker = new Worker<TicketJobData>(
         ],
       );
     });
+
+    await recordUsage(tenantId, 'ticket_classification', classification.source === 'llm'
+      ? { tokensIn: classification.usage?.inputTokens, tokensOut: classification.usage?.outputTokens, metadata: { source: 'llm' } }
+      : { costUsd: 0, metadata: { source: 'heuristic' } });
   },
   { connection, concurrency: Number(process.env.WORKER_CONCURRENCY || 10) },
 );
@@ -92,8 +97,16 @@ void churnQueue.add(
   { repeat: { every: 6 * 60 * 60 * 1000 }, jobId: 'churn-scan-repeatable' },
 ).catch((error) => console.error('conduit-reply churn repeatable registration failed', error));
 
+// Debounce bursts of order events into one churn scan per tenant per 5-minute bucket — the
+// deterministic jobId makes a repeat `add` within the same bucket a no-op in BullMQ.
 startCoreEventListener((event) => {
-  console.log('conduit-reply received core event', event);
+  if (!event.topic.startsWith('orders/')) return;
+  const bucket = Math.floor(Date.now() / (5 * 60 * 1000));
+  void churnQueue.add(
+    'churn-scan-on-event',
+    { tenantId: event.tenantId },
+    { jobId: `evt-churn:${event.tenantId}:${bucket}`, delay: 60_000 },
+  ).catch((error) => console.error('conduit-reply event-driven churn scan enqueue failed', error));
 });
 
 let shuttingDown = false;

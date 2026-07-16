@@ -18,6 +18,11 @@ services:
       - ./conduit-core/db/migrations/002_seed.sql:/docker-entrypoint-initdb.d/002_seed.sql:ro
       - ./conduit-reply/db/migrations/003_reply_init.sql:/docker-entrypoint-initdb.d/003_reply_init.sql:ro
       - ./conduit-reply/db/migrations/004_reply_seed.sql:/docker-entrypoint-initdb.d/004_reply_seed.sql:ro
+      - ./conduit-ops/db/migrations/005_ops_init.sql:/docker-entrypoint-initdb.d/005_ops_init.sql:ro
+      - ./conduit-ops/db/migrations/006_ops_seed.sql:/docker-entrypoint-initdb.d/006_ops_seed.sql:ro
+      - ./conduit-cfo/db/migrations/007_cfo_init.sql:/docker-entrypoint-initdb.d/007_cfo_init.sql:ro
+      - ./conduit-cfo/db/migrations/008_cfo_seed.sql:/docker-entrypoint-initdb.d/008_cfo_seed.sql:ro
+      - ./conduit-cfo/db/migrations/009_integration.sql:/docker-entrypoint-initdb.d/009_integration.sql:ro
 
   redis:
     image: redis:7-alpine
@@ -68,6 +73,8 @@ services:
   web:
     build:
       context: ./conduit-core/web
+      args:
+        API_URL: http://api:4000
     ports:
       - "3000:3000"
     environment:
@@ -123,6 +130,8 @@ services:
   reply-web:
     build:
       context: ./conduit-reply/web
+      args:
+        API_URL: http://reply-api:4001
     ports:
       - "3001:3001"
     environment:
@@ -132,5 +141,115 @@ services:
     depends_on:
       - reply-api
 
+  ops-api:
+    build:
+      context: ./conduit-ops/api
+    command: node dist/server.js
+    ports:
+      - "4002:4002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://conduit:conduit@postgres:5432/conduit
+      REDIS_URL: redis://redis:6379
+      PORT: "4002"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:-}
+    volumes:
+      - ops_invoices:/app/uploads
+
+  ops-worker:
+    build:
+      context: ./conduit-ops/api
+    command: node dist/worker.js
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://conduit:conduit@postgres:5432/conduit
+      REDIS_URL: redis://redis:6379
+      PORT: "4002"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:-}
+    volumes:
+      - ops_invoices:/app/uploads
+
+  ops-web:
+    build:
+      context: ./conduit-ops/web
+      args:
+        API_URL: http://ops-api:4002
+    ports:
+      - "3002:3002"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4002
+      API_URL: http://ops-api:4002
+      PORT: "3002"
+    depends_on:
+      - ops-api
+
+  cfo-api:
+    build:
+      context: ./conduit-cfo/api
+    command: node dist/server.js
+    ports:
+      - "4003:4003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://conduit:conduit@postgres:5432/conduit
+      CFO_READONLY_DATABASE_URL: postgres://conduit_cfo_readonly:conduit_cfo_readonly@postgres:5432/conduit
+      REDIS_URL: redis://redis:6379
+      PORT: "4003"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+      STRIPE_USAGE_METER_EVENT_NAME: ${STRIPE_USAGE_METER_EVENT_NAME:-conduit_ai_tasks}
+      META_ADS_ACCESS_TOKEN: ${META_ADS_ACCESS_TOKEN:-}
+      META_AD_ACCOUNT_ID: ${META_AD_ACCOUNT_ID:-}
+
+  cfo-worker:
+    build:
+      context: ./conduit-cfo/api
+    command: node dist/worker.js
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://conduit:conduit@postgres:5432/conduit
+      CFO_READONLY_DATABASE_URL: postgres://conduit_cfo_readonly:conduit_cfo_readonly@postgres:5432/conduit
+      REDIS_URL: redis://redis:6379
+      PORT: "4003"
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      STRIPE_API_KEY: ${STRIPE_API_KEY:-}
+      STRIPE_USAGE_METER_EVENT_NAME: ${STRIPE_USAGE_METER_EVENT_NAME:-conduit_ai_tasks}
+      META_ADS_ACCESS_TOKEN: ${META_ADS_ACCESS_TOKEN:-}
+      META_AD_ACCOUNT_ID: ${META_AD_ACCOUNT_ID:-}
+
+  cfo-web:
+    build:
+      context: ./conduit-cfo/web
+      args:
+        API_URL: http://cfo-api:4003
+    ports:
+      - "3003:3003"
+    environment:
+      API_URL: http://cfo-api:4003
+      PORT: "3003"
+    depends_on:
+      - cfo-api
+
 volumes:
   pgdata:
+  ops_invoices:

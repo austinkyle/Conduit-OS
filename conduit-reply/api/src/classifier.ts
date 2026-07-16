@@ -1,10 +1,11 @@
-import { classifyTicket } from './llm.js';
+import { classifyTicket, type AnthropicUsage } from './llm.js';
 
 export interface ClassificationResult {
   category: string;
   sentiment: string;
   summary: string;
   source: 'llm' | 'heuristic';
+  usage?: AnthropicUsage;
 }
 
 export function classifyDeterministic(body: string): Omit<ClassificationResult, 'source'> {

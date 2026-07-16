@@ -44,7 +44,8 @@ Data flow: `conduit-core` is the source of truth. All other modules consume its 
 
 - [x] conduit-core — shipped (ingest API, worker, fraud agent, ledger console, tests, simulator — verified 2026-07-15)
 - [x] conduit-reply — shipped (ticket ingest, BullMQ classification, RAG draft generation, autonomous Shopify actions, churn-prevention SMS loop, Agent Copilot console, tests, eval, simulator — verified 2026-07-15)
-- [ ] conduit-ops — not started
-- [ ] conduit-cfo — not started
+- [x] conduit-ops — shipped (forecast engine, PO auto-drafting, supplier email agent, returns router, invoice OCR, Supply Chain Command Center console, tests, eval, simulator — verified 2026-07-15)
+- [x] conduit-cfo — shipped (financial rollup engine, LTV cohorts, NL copilot with DB-level readonly-role enforcement, BullMQ worker, Executive Financial Cockpit console, tests, eval, simulator — verified 2026-07-15)
+- [x] cross-module integration layer — shipped (event-driven reactions from core's stream into reply/ops/cfo debounced BullMQ jobs, shared `usage_ledger` + Stripe metered-billing sync + cfo usage panel, cfo copilot schema extended to `orders_financial`/`products`/`usage_ledger` via DB grants — see root README's "Cross-module integration" section and each module's `context.md`)
 
 Details per module to be provided; update each `context.md` as specs arrive.
