@@ -1,5 +1,7 @@
 # conduit-core
 
+**Evidence scope:** implemented portfolio prototype. Benchmark and test outcomes below are historical repository records, not a fresh rerun or proof of client production usage. See the [FDE case study](../FDE-CASE-STUDY.md) for business validation still required.
+
 conduit-core protects revenue during high-volume launches by turning Shopify webhook delivery into a fast, deduplicated, replayable source of truth.
 
 ## Hook: the failure hidden inside a successful flash sale

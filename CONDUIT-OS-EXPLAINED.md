@@ -4,41 +4,44 @@ title: "Conduit OS: The Simple Layman's Explanation"
 
 # Conduit OS: The Simple Layman's Explanation
 
-Think of Conduit OS as a highly intelligent, fully automated "digital brain" for an e-commerce business.
+Conduit OS is a portfolio prototype for connecting commerce operations around an auditable record of store events. It implements four modules; it does not establish client deployment, unlimited scale, or measured business savings.
 
-Instead of a company having five different departments that don't talk to each other — where customer service doesn't know where a package is, inventory managers are guessing what to buy next, and the CEO is stressing over spreadsheets — Conduit OS connects all of these pieces into one smooth, automated system.
+The workflow below is illustrative, not a record of a client being observed. See the [FDE case study](FDE-CASE-STUDY.md) for the evidence, limitations, and validation still required. The accompanying PDF is a historical explanation and may contain broader claims than this updated document.
 
-Here is what each of the four parts does in plain English, and how they work together:
+## 1. Core: receive and inspect events
 
-## 1. conduit-core (The Vault)
+When Shopify sends an order notification, Core verifies its signature, writes a ledger entry, and queues processing. Database identity rules prevent repeated deliveries from creating a new ledger row for the same event. An operator can inspect the record, see errors, and replay it with the required role.
 
-**What it does simply:** This is the high-security foundation. Every single time a customer buys something on the Shopify website, this module catches that transaction, double-checks it to make sure it's not a duplicate or a fraud, and locks it safely into the database. It is built to never drop a single order, even if millions of people are buying things at the exact same second during a massive holiday sale.
+This is useful engineering evidence, not a promise that every order is always processed. Writing the ledger and adding a queue job are separate operations. A failure between them requires recovery, and downstream notifications do not provide a durable replay log of their own.
 
-**How it ties in:** It acts as the single source of truth. It instantly tells the other three modules: "Hey, a new order just came in, here are the details. Get to work!"
+## 2. Reply: assist support work
 
-## 2. conduit-reply (The Automated Support Agent)
+Reply implements ticket classification, policy-based drafting, and role-gated commerce-action routes. The software supplies structure; optional AI interprets language and drafts. Business policies and the operator determine which actions are permitted and which cases need review.
 
-**What it does simply:** This is the customer service representative. Instead of making customers wait hours for a human agent to reply to an email, this AI agent instantly reads incoming customer messages. It can look up where their package is, automatically update a shipping address, process a return, or answer product questions based on the brand's policies. If a customer is angry or has a highly complex problem, it neatly hands the conversation over to a human team member with a pre-written draft response ready to go.
+The repository does not prove customer-service accuracy or payroll savings. Before a real rollout, compare drafts and actions with approved historical tickets and test authorization and recovery.
 
-**How it ties in:** It talks directly to The Vault (conduit-core) to verify that the person emailing actually bought the item, matching their order history instantly so the AI has full context.
+## 3. Ops: calculate and draft inventory work
 
-## 3. conduit-ops (The Warehouse Forecaster)
+Ops computes sales velocity and depletion forecasts, drafts purchase orders, and includes supplier-email and invoice-processing paths. The forecasts are software calculations; language/OCR assistance can use a model. Purchase commitments and exceptions need accountable operating rules and review.
 
-**What it does simply:** This is the inventory manager. Running out of stock means losing money, but buying too much stock freezes up the business's cash. This module looks at how fast items are selling, blends in the upcoming marketing budget, and predicts the exact day the warehouse will run out of a product. Before that happens, it automatically drafts a purchase order for the factory and drafts an email to the supplier to get production started.
+Better inventory decisions are a potential benefit to test. The repository does not demonstrate cash released, fewer stockouts, or historical forecast accuracy in a client business.
 
-**How it ties in:** It watches how fast orders are piling up in The Vault (conduit-core) to adjust its math in real time. It ensures the warehouse always has the perfect amount of stock to fulfill the orders coming in.
+## 4. CFO: make financial calculations inspectable
 
-## 4. conduit-cfo (The Executive Cockpit)
+CFO computes financial rollups and customer cohorts and includes a natural-language query interface. The query interface uses a restricted database role and a SELECT guard; model output does not receive unrestricted write authority.
 
-**What it does simply:** This is the business dashboard for the owner. It automatically pulls in data from Meta (Facebook) and Google ads, combines it with the sales data from Shopify, subtracts the cost of the products and shipping, and shows the founder their exact daily net profit in real time. It also features an AI chat box where the owner can type a plain English question — like "Which of our products made us the most money yesterday?" — and get an instant, accurate answer.
+The demo is not a reconciled client financial report. Source definitions, accounting assumptions, tenant access, and output correctness need acceptance against the business's records.
 
-**How it ties in:** It sits at the very top of the ecosystem. It takes the sales data from conduit-core and the inventory cost data from conduit-ops, blending them with external ad spend to give the business owner total financial clarity to run their brand.
+## How the pieces connect
 
-## How It All Ties Together: A Real-World Example
+Core publishes processed-event notifications. Downstream listeners can schedule work, and the modules record usage into a shared ledger. Notifications and debounced jobs demonstrate integration; disconnected-listener recovery and durable event consumption remain important gaps before a production guarantee.
 
-To see the magic of Conduit OS, let's look at what happens when a customer named Sarah buys a jacket:
+## An illustrative order exception
 
-1. **The Purchase:** Sarah buys a $100 jacket. conduit-core instantly catches the transaction, verifies it, and logs it.
-2. **The Operations Alert:** conduit-ops sees the sale. It recalculates the warehouse stock, realizes there are only 10 jackets left, and automatically drafts a purchase order to the manufacturer to make 500 more.
-3. **The Customer Question:** Sarah emails asking, "Can I change my shipping address to my work address?" conduit-reply instantly grabs the email, matches Sarah to her order in conduit-core, updates her shipping address in Shopify, and replies to her in under 60 seconds confirming the change.
-4. **The Bottom Line:** At midnight, the business owner logs into conduit-cfo. The system has automatically subtracted the $20 cost of the jacket and the $30 spent on the Facebook ad that targeted Sarah, showing the owner that they made a clean $50 net profit on that transaction today.
+An operator receives a support question about an order. The intended system lets them inspect the order-event record, review a suggested policy reply, check inventory context, and see the financial implications. The operator remains responsible for the customer's actual facts and business commitments.
+
+This scenario explains the design. It is not evidence that a client used it or that an outcome was achieved.
+
+## What would establish business value
+
+Observe the existing process first. Record exceptions, handling time, reconciliation work, reporting delay, and operating costs. Verify against approved historical examples, run a shadow trial, then compare the same measures after adoption. Keep recovered capacity, realized savings, and financial exposure separate.

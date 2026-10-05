@@ -1,10 +1,14 @@
 # Conduit-OS
 
-Conduit-OS gives high-growth DTC brands a reliable event-driven AI operating system that turns every commerce event into an auditable, automation-ready business signal.
+**Portfolio scope:** an implemented commerce-operations prototype with seeded demos and historical local verification. The repository does not establish deployment into a client business, production scale, operator adoption, or measured ROI. Here, “implemented” describes repository code, not commercial acceptance.
 
-Built for $5M–$50M brands, it starts with `conduit-core`: a Shopify ingestion ledger that acknowledges webhooks quickly, eliminates duplicate-delivery effects, preserves replayable history, and publishes a stable event stream for future support, inventory, and finance automation.
+**[FDE case study](FDE-CASE-STUDY.md)** — workflow hypothesis, software/AI/human routing, recovery boundaries, verification evidence, and a business-value measurement plan.
 
-> **New here?** Read **[Conduit OS: The Simple Layman's Explanation](CONDUIT-OS-EXPLAINED.md)** ([PDF](CONDUIT-OS-EXPLAINED.pdf)) for a plain-English walkthrough of what all four modules do and how they work together, with a real-world example.
+Conduit-OS explores event-driven commerce operations: establish an auditable event record, then support service, inventory, and financial workflows from it.
+
+The design targets DTC commerce workflows. It starts with `conduit-core`: a Shopify ingestion ledger that acknowledges webhooks quickly, eliminates duplicate-delivery effects, preserves replayable history, and publishes a stable event stream for future support, inventory, and finance automation.
+
+> **New here?** Read **[Conduit OS: The Simple Layman's Explanation](CONDUIT-OS-EXPLAINED.md)** ([historical PDF](CONDUIT-OS-EXPLAINED.pdf)) for a plain-English walkthrough of what all four modules do and how they work together, with an illustrative business scenario. The case study above states the current proof boundary.
 
 ## In plain English
 
@@ -18,18 +22,18 @@ At small scale this works fine. But during a huge sale — Black Friday, a viral
 
 For a brand doing $20M/year, a 0.5%–1% failure rate during one big sale isn't a rounding error — it's real orders, real customer complaints, and real support-team hours spent untangling what actually happened.
 
-**What Conduit-Core does about it:** It sits between Shopify and everything downstream as a strict, honest gatekeeper. Every incoming order message is checked for authenticity (so nobody can fake an order), instantly recorded in a permanent, searchable ledger, and processed exactly once — even if Shopify sends the same message five times. Nothing is lost, nothing is double-counted, and every event is visible in a dashboard where a human can see exactly what happened and, if something ever did fail, replay it with one click. It also runs a lightweight fraud check on every order in the background, flagging suspicious ones (mismatched addresses, unusually large carts, disposable email addresses) without slowing anything down.
+**What Conduit-Core does about it:** It sits between Shopify and everything downstream as a strict, honest gatekeeper. Every incoming order message is checked for authenticity (so nobody can fake an order), instantly recorded in a permanent, searchable ledger, and materialized idempotently in the included simulator — even when a delivery is repeated. This is not an end-to-end exactly-once guarantee: ledger insertion and queue enqueue are separate operations, and downstream notifications are transient. Every recorded event is visible in a dashboard where a human can see exactly what happened and, if something ever did fail, replay it with one click. It also runs a lightweight fraud check on every order in the background, flagging suspicious ones (mismatched addresses, unusually large carts, disposable email addresses) without slowing anything down.
 
-Think of it less like "an app" and more like a company's accounting ledger for online orders: boring by design, because boring means nothing gets lost, nothing gets double-booked, and there's always a paper trail.
+Think of it less like "an app" and more like a company's accounting ledger for online orders: designed to make duplicates and processing failures visible and recoverable. Recovery across every failure boundary still needs production validation.
 
-**Why it's the foundation of the whole system:** Conduit-Core is the first of four planned modules. It's built first because everything else — automating customer support, predicting inventory needs, tracking real-time profit margins — depends on having a trustworthy, complete, deduplicated record of what actually happened in the store. Get that record wrong, and every downstream automation inherits the error.
+**Why it's the foundation of the whole system:** Conduit-Core is the foundation for the four implemented prototype modules. It's built first because everything else — automating customer support, predicting inventory needs, tracking real-time profit margins — depends on having a trustworthy, complete, deduplicated record of what actually happened in the store. Get that record wrong, and every downstream automation inherits the error.
 
 ## System architecture
 
 ```mermaid
 flowchart LR
     Shopify[Shopify webhooks] --> HMAC[HMAC-verified ingest]
-    subgraph Core[conduit-core — shipped]
+    subgraph Core[conduit-core — implemented prototype]
         HMAC --> Ledger[(Postgres webhook ledger<br/>Row-Level Security)]
         HMAC --> Queue[Redis / BullMQ]
         Queue --> Worker[Idempotent worker<br/>fraud scoring + retries]
@@ -38,17 +42,17 @@ flowchart LR
         Ledger --> Console[Next.js ledger console]
     end
     Worker --> Stream[pg_notify conduit_events<br/>downstream event stream]
-    subgraph Reply[conduit-reply — shipped]
+    subgraph Reply[conduit-reply — implemented prototype]
         Stream --> Intake[Ticket classification]
         Intake --> Drafts[RAG drafts]
         Drafts --> Actions[Authorized actions]
     end
-    subgraph Ops[conduit-ops — shipped]
+    subgraph Ops[conduit-ops — implemented prototype]
         Stream --> Velocity[Sales velocity + forecast]
         Velocity --> POs[Auto-drafted purchase orders]
         POs --> Supplier[Supplier email agent]
     end
-    subgraph CFO[conduit-cfo — shipped]
+    subgraph CFO[conduit-cfo — implemented prototype]
         Stream --> Rollup[Daily financial rollup]
         Orders -.read-only.-> Rollup
         Rollup --> Cohorts[LTV cohorts]
@@ -57,9 +61,9 @@ flowchart LR
     Console -->|search, filter, replay| HMAC
 ```
 
-## Verified local benchmark
+## Historical local benchmark
 
-These are honest local results from the included simulator—not hosted-production claims. It sends 25 signed webhooks at concurrency 10, includes two fraud-pattern payloads, resends five byte-identical deliveries, and polls until processing drains.
+These are previously recorded local results from the included simulator, not hosted-production claims or a fresh October 2026 rerun. It sends 25 signed webhooks at concurrency 10, includes two fraud-pattern payloads, resends five byte-identical deliveries, and polls until processing drains.
 
 | Business concern | Verified result | Why it matters |
 |---|---:|---|
@@ -67,7 +71,7 @@ These are honest local results from the included simulator—not hosted-producti
 | Cold-deploy behavior | Only the first burst showed p95 ~105 ms | Warm-up behavior is visible, not hidden |
 | Duplicate deliveries | 5/5 acknowledged as duplicates on every run | Shopify retries do not create duplicate work |
 | Duplicate ledger rows | 0 ever created | Database uniqueness backs idempotency |
-| Exactly-once materialization | 250 processed ledger events across 10 runs produced exactly 25 order rows | Repeated runs converge on one row per external order |
+| Idempotent order materialization in the recorded runs | 250 processed ledger events across 10 runs produced exactly 25 order rows | Repeated runs converge on one row per external order |
 | Fraud outcome | 1 order fraud-flagged | Deterministic scoring runs in the worker path |
 | Processing failures | 0 across all verified runs | The verified runs drained cleanly |
 | Authorization | Viewer replay → `403`; Admin replay → `200` | Replay follows role boundaries |
@@ -109,10 +113,10 @@ npm test
 
 | Module | Status | Business problem |
 |---|---|---|
-| [`conduit-core`](conduit-core/README.md) | **Shipped and verified** | Prevents lost, duplicated, or unauditable events from becoming ghost orders and reconciliation work. |
-| [`conduit-reply`](conduit-reply/README.md) | **Shipped and verified** | Automates ticket triage, grounded drafts, and authorized commerce actions so service volume can grow without support payroll growing at the same rate. |
-| [`conduit-ops`](conduit-ops/README.md) | **Shipped and verified** | Releases cash frozen in slow inventory while bestsellers stock out. |
-| [`conduit-cfo`](conduit-cfo/README.md) | **Shipped and verified** | Replaces ad-scaling decisions made on stale spreadsheet data with a daily reconciled net-profit number, real LTV cohorts, and a database-enforced read-only NL copilot. |
+| [`conduit-core`](conduit-core/README.md) | **Implemented prototype** | Makes received events auditable, deduplicated, and replayable for reconciliation. |
+| [`conduit-reply`](conduit-reply/README.md) | **Implemented prototype** | Explores ticket triage, grounded drafts, and role-gated commerce actions. Payroll effects are unmeasured. |
+| [`conduit-ops`](conduit-ops/README.md) | **Implemented prototype** | Computes depletion forecasts and drafts purchase orders for operator review. Cash/stockout effects are unmeasured. |
+| [`conduit-cfo`](conduit-cfo/README.md) | **Implemented prototype** | Computes financial rollups and cohorts and provides a database-enforced read-only copilot. Live-source reconciliation remains an acceptance task. |
 
 ## Cross-module integration
 
@@ -123,7 +127,7 @@ The four modules aren't four separate apps sharing a database by coincidence —
 - **Cross-module financial copilot.** The NL copilot's schema now spans a PII-safe `orders_financial` view onto core's orders (no customer id, no raw payload) and `ops`'s `products` table, alongside cfo's own tables — enforced the same way as everything else in cfo: by what the `conduit_cfo_readonly` Postgres role is actually granted, not by an app-layer allowlist.
 - **Upgrading an existing volume.** `docker-entrypoint-initdb.d` only runs against a fresh Postgres volume. If you already have one running, apply the integration migration directly: `./scripts/apply-migration.sh`.
 
-## What ships today
+## What is implemented
 
 - Fastify ingest with raw-body HMAC-SHA256 verification and 60-second tenant cache.
 - PostgreSQL idempotency on `(tenant_id, shopify_event_id)`.
@@ -132,7 +136,7 @@ The four modules aren't four separate apps sharing a database by coincidence —
 - Deterministic fraud scoring with optional Claude escalation.
 - `pg_notify('conduit_events', ...)` publication for downstream modules.
 - Next.js 14 console with live counts, search, filters, JSON inspection, role selection, and replay.
-- Reproducible simulator and 11 passing unit tests.
+- Reproducible simulator and unit-test sources; see the case study for the verification boundary.
 - `conduit-reply` CRM with asynchronous classification, grounded drafts, role-gated Shopify actions, churn SMS, Agent Copilot, and zero-key fallbacks.
 - `conduit-ops` ERP with deterministic depletion forecasting, auto-drafted purchase orders, a supplier email agent, a returns router, and invoice OCR with a deterministic fallback.
 - `conduit-cfo` Executive Financial Cockpit with a daily financial rollup engine, LTV cohort computation, and an NL copilot enforced read-only at the database level, not just the app layer.

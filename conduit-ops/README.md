@@ -1,5 +1,7 @@
 # conduit-ops
 
+**Evidence scope:** implemented portfolio prototype. Benchmark and test outcomes below are historical repository records, not a fresh rerun or proof of client production usage. See the [FDE case study](../FDE-CASE-STUDY.md) for business validation still required.
+
 conduit-ops keeps cash from freezing in the wrong inventory by predicting stockouts before they happen and drafting the purchase order to fix them automatically.
 
 ## Hook: cash frozen in slow inventory while bestsellers stock out

@@ -1,5 +1,7 @@
 # conduit-cfo
 
+**Evidence scope:** implemented portfolio prototype. Benchmark and test outcomes below are historical repository records, not a fresh rerun or proof of client production usage. See the [FDE case study](../FDE-CASE-STUDY.md) for business validation still required.
+
 conduit-cfo turns ad spend, unit costs, and the order ledger into a single, always-current net-profit number, so scaling decisions stop being made against a spreadsheet that's a week stale.
 
 ## Hook: multi-million ad scaling decisions made on stale spreadsheet data

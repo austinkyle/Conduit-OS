@@ -1,5 +1,7 @@
 # conduit-reply
 
+**Evidence scope:** implemented portfolio prototype. Benchmark and test outcomes below are historical repository records, not a fresh rerun or proof of client production usage. See the [FDE case study](../FDE-CASE-STUDY.md) for business validation still required.
+
 conduit-reply keeps support response volume growing without support headcount growing at the same rate by automating ticket triage, grounded drafts, safe commerce actions, and churn-prevention outreach.
 
 ## Hook: support payroll is the fastest-growing cost center
